@@ -1,2 +1,2 @@
-local one = require("./sample1.lua")
+local one = require("./sample1")
 print(one .. " two!")

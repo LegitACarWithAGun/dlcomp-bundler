@@ -1,0 +1,19 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "build-bundler",
+			"type": "shell",
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"focus": false,
+				"panel": "shared",
+				"showReuseMessage": true,
+				"clear": true,
+			},
+			// replace with whatever generator youre using
+			"command": "ninja -C ./build",
+		},
+	]
+}

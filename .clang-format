@@ -1,0 +1,3 @@
+BasedOnStyle: Microsoft
+ColumnLimit: 500
+BreakBeforeBraces: Attach

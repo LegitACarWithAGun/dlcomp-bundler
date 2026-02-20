@@ -1,0 +1,12 @@
+{
+	"triggerTaskOnSave.restart": true,
+	"triggerTaskOnSave.on": true,
+	"triggerTaskOnSave.showBusyIndicator": true,
+	"triggerTaskOnSave.tasks": {
+		"build-bundler": [
+			"*.cpp",
+		]
+	},
+	"editor.formatOnSave": true,
+	"C_Cpp.formatting": "clangFormat",
+}
