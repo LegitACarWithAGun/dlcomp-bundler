@@ -9,4 +9,5 @@
 	},
 	"editor.formatOnSave": true,
 	"C_Cpp.formatting": "clangFormat",
+	"luau-lsp.sourcemap.enabled": false,
 }

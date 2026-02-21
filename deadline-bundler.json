@@ -1,0 +1,5 @@
+{
+	"entryPath": "./sample2",
+	"outputPath": "./output.lua",
+	"printResult": true
+}

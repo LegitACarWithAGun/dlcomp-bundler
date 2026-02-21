@@ -1,0 +1,13 @@
+{
+	"version": 8,
+	"configurePresets": [
+		{
+			"name": "base",
+			"displayName": "base",
+			"binaryDir": "${sourceDir}/build",
+			"cacheVariables": {
+				"CMAKE_INSTALL_PREFIX": "${sourceDir}/build/install/${presetName}"
+			}
+		}
+	]
+}

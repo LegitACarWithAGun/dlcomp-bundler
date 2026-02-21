@@ -171,7 +171,7 @@ std::vector<luaFile> generateFileTree(std::filesystem::path entry) {
         return selfId;
     };
 
-    recurse(entry);
+    recurse(correctPath(entry));
 
     return files;
 }
