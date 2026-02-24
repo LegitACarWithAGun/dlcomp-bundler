@@ -1,1 +1,0 @@
-return "arbitrary string"

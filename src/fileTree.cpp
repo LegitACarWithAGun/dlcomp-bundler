@@ -111,7 +111,7 @@ std::filesystem::path correctPath(std::filesystem::path path) {
         return path;
     }
 
-    // is dir, scan for entry (init.lua and init.luau)
+    // if dir, scan for /init.lua and /init.luau in the dir
     if (std::filesystem::is_directory(path)) {
         path.append("init");
     }
@@ -121,6 +121,19 @@ std::filesystem::path correctPath(std::filesystem::path path) {
         throw std::runtime_error(std::format("path has multiple/no valid options: {}", pathAbsGeneric(path)));
     }
     return result.value();
+}
+
+std::filesystem::path moveFrom(std::filesystem::path from, std::string require) {
+    static std::string selfSelector = "@self/";
+    if (require.starts_with(selfSelector)) {
+        // doesnt seem to be an issue to use @self from any file
+        require = require.erase(0, selfSelector.length());
+    } else if (from.stem() == "init") {
+        // compatability with https://rfcs.luau.org/abstract-module-paths-and-init-dot-luau.html
+        from = from.parent_path();
+    }
+    auto target = from.parent_path().append(require);
+    return correctPath(target);
 }
 
 // guarantees about this function:
@@ -150,9 +163,10 @@ std::vector<luaFile> generateFileTree(std::filesystem::path entry) {
                 continue;
             }
 
-            auto targetPath = path.parent_path().append(call.target);
-            targetPath = correctPath(targetPath);
+            // calculate the path to the import
+            auto targetPath = moveFrom(path, call.target);
 
+            // get id of the import
             importId targetId;
             if (pathToFile.contains(targetPath)) {
                 targetId = pathToFile.at(targetPath);
@@ -161,6 +175,7 @@ std::vector<luaFile> generateFileTree(std::filesystem::path entry) {
                 targetId = recurse(targetPath);
             }
 
+            // add import data to self
             files[selfId].imports.push_back(importCall{
                 .location = call.location,
                 .targetId = targetId,

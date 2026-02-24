@@ -11,6 +11,7 @@
 std::filesystem::path defaultBundleConfigPath = "./deadline-bundler.json";
 
 int main() {
+    // read config
     std::filesystem::path configPath = defaultBundleConfigPath;
     std::ifstream configFile(configPath);
     if (!configFile) {
@@ -21,9 +22,11 @@ int main() {
     }
     bundleConfig config = parseConfig(configFile);
 
+    // generate file/dependancy tree
     std::cout << "reading from " << pathAbsGeneric(config.entryPath) << std::endl;
     std::vector<luaFile> files = generateFileTree(config.entryPath);
 
+    // format and output file tree
     std::string bundle = bundleFileTree(files);
     std::filesystem::path outputPath = config.outputPath;
     writeFile(outputPath, bundle);

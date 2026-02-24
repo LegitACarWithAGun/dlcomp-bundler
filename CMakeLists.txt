@@ -11,6 +11,12 @@ add_subdirectory(extern/luau/)
 project(fast)
 add_executable(fast src/fast.cpp)
 
+# tests
+project(test)
+add_executable(test test/main.cpp)
+target_link_libraries(test PUBLIC Luau.Ast)
+target_include_directories(test PRIVATE src/)
+
 # put executables in ./bin
 # any projects above this will still be put in ./build
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin")
