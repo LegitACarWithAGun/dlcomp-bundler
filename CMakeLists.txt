@@ -7,10 +7,6 @@ option(LUAU_STATIC_CRT ON)
 option(LUAU_EXTERN_C ON)
 add_subdirectory(extern/luau/)
 
-# quick testing of non-luau dependant code
-project(fast)
-add_executable(fast src/fast.cpp)
-
 # tests
 project(test)
 add_executable(test test/main.cpp)
