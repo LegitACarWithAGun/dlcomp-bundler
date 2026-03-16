@@ -42,7 +42,7 @@ std::string fmtLocation(Luau::Location location) {
 size_t positionToIndex(std::string text, Luau::Position position) {
     size_t lineStart = 0;
     for (int line = 0; line < position.line; line++) {
-        lineStart = text.find("\n", lineStart);
+        lineStart = text.find("\n", lineStart) + 1;
     }
     return lineStart + position.column;
 }
