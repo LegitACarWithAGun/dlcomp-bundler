@@ -13,7 +13,12 @@
 				"clear": true,
 			},
 			// replace with whatever generator youre using
-			"command": "ninja -C ./build",
+			"command": "ninja",
+			"args": [
+				"-C",
+				"./build"
+			],
+			"problemMatcher": "$gcc"
 		},
 	]
 }
