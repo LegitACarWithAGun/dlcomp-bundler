@@ -3,6 +3,7 @@
 #include "Luau/Ast.h"
 #include "Luau/Parser.h"
 #include "utils.cpp"
+#include <cassert>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -11,17 +12,23 @@
 static std::unordered_set<std::string> fileExtensions = {".lua", ".luau"};
 
 typedef int importId;
-struct importCall {
-    Luau::Location location;
-    importId targetId;
-    std::filesystem::path targetPath;
-};
+typedef std::filesystem::path filePath;
+
+struct importCall;
 struct luaFile {
-    std::filesystem::path path;
-    importId importId;
+    filePath path;
+    // raw file contents
     std::string contents;
-    // bundle.cpp -> fmtModule expects this to be in ascending order by location; higher locations later
+    // bundle.cpp/fmtModule expects this to be in ascending order by location; higher locations later
     std::vector<importCall> imports;
+    int dependantCount;
+
+    // not filled out by generateFileTree!! call flattenFileTreeDependantFirst
+    importId importId;
+};
+struct importCall {
+    Luau::Location callLocation;
+    luaFile *targetFile;
 };
 
 bool ignoreRequireTarget(std::string target) {
@@ -86,8 +93,8 @@ std::vector<requireCall> getRequireCalls(std::string scriptContents) {
     return visitor.results;
 }
 
-std::optional<std::filesystem::path> attemptExtensions(std::filesystem::path path) {
-    std::optional<std::filesystem::path> result;
+std::optional<filePath> attemptExtensions(filePath path) {
+    std::optional<filePath> result;
 
     for (auto extension : fileExtensions) {
         auto newPath = path;
@@ -103,7 +110,7 @@ std::optional<std::filesystem::path> attemptExtensions(std::filesystem::path pat
 
     return result;
 }
-std::filesystem::path correctPath(std::filesystem::path path) {
+filePath correctPath(filePath path) {
     // matches directly
     bool hasExpectedExtension = fileExtensions.contains(path.extension().string());
     bool isFile = std::filesystem::is_regular_file(path);
@@ -120,10 +127,10 @@ std::filesystem::path correctPath(std::filesystem::path path) {
     if (!result.has_value()) {
         throw std::runtime_error(std::format("path has multiple/no valid options: {}", pathAbsGeneric(path)));
     }
-    return result.value();
+    return result.value().lexically_normal();
 }
 
-std::filesystem::path moveFrom(std::filesystem::path from, std::string require) {
+filePath moveFrom(filePath from, std::string require) {
     static std::string selfSelector = "@self/";
     if (require.starts_with(selfSelector)) {
         // doesnt seem to be an issue to use @self from any file
@@ -136,27 +143,59 @@ std::filesystem::path moveFrom(std::filesystem::path from, std::string require) 
     return correctPath(target);
 }
 
+// guarantees about the outputs of this function:
+// - index and importId of files are the same
+// - the entry file will always be index 0
+// - any files that depend on another file will always be before the file they depend on
+std::vector<luaFile *> flattenFileTreeDependantFirst(luaFile *entry) {
+    std::unordered_map<luaFile *, int> dependenciesVisited;
+
+    std::vector<luaFile *> files;
+    std::vector<luaFile *> nextDepth{entry};
+    while (!nextDepth.empty()) {
+        auto currentDepth = nextDepth;
+        nextDepth.clear();
+        for (auto file : currentDepth) {
+            // assign importId and store
+            file->importId = files.size();
+            files.push_back(file);
+
+            // visit imports
+            for (auto import : file->imports) {
+                auto importFile = import.targetFile;
+                // have we visited all of the files that depend on this import yet?
+                int importVisitCount = ++dependenciesVisited[importFile];
+                if (importVisitCount >= importFile->dependantCount) {
+                    // we've visited all of the files that depend on this function, visit it at the next depth
+                    nextDepth.emplace_back(importFile);
+                    dependenciesVisited.erase(importFile);
+                }
+            }
+        }
+    }
+
+    assert(dependenciesVisited.empty());
+
+    return files;
+}
+
+// builds a dependancy tree from the provided file path.
+// the importId fields are not filled, call flattenFileTreeDependantFirst for that.
+//
 // guarantees about this function:
-// - the entry file will always be index and importId 0, no other file has any specific requirements on location or id
 // - the .imports field of all files will be in ascending order by location; later calls are later in the list
-std::vector<luaFile> generateFileTree(std::filesystem::path entry) {
-    std::vector<luaFile> files;
-    std::unordered_map<std::filesystem::path, importId> pathToFile;
+//   - (relevant for overriding the require calls later)
+luaFile *generateFileTree(filePath entry) {
+    std::unordered_map<filePath, luaFile *> pathToFile;
 
     // TODO: check for circular dependencies
 
-    std::function<importId(std::filesystem::path)> recurse = [&](std::filesystem::path path) -> importId {
-        importId selfId = files.size();
+    std::function<luaFile *(filePath)> recurse = [&](filePath path) -> luaFile * {
+        auto file = new luaFile{};
+        file->path = path;
+        file->contents = readFile(path);
 
-        luaFile file;
-        file.path = path;
-        file.contents = readFile(path);
-        file.importId = selfId;
-        files.push_back(file);
-
-        pathToFile.insert_or_assign(path, selfId);
-
-        auto requireCalls = getRequireCalls(file.contents);
+        auto requireCalls = getRequireCalls(file->contents);
         for (auto call : requireCalls) {
             // ignore require calls we dont care about, ie runtime network calls
             if (ignoreRequireTarget(call.target)) {
@@ -166,27 +205,35 @@ std::vector<luaFile> generateFileTree(std::filesystem::path entry) {
             // calculate the path to the import
             auto targetPath = moveFrom(path, call.target);
 
-            // get id of the import
-            importId targetId;
+            // get the file of the import
+            luaFile *targetFile;
             if (pathToFile.contains(targetPath)) {
-                targetId = pathToFile.at(targetPath);
+                // already seen this file
+                targetFile = pathToFile.at(targetPath);
             } else {
-                // we havent seen this file yet
-                targetId = recurse(targetPath);
+                // we havent seen this file yet,
+                targetFile = recurse(targetPath);
+                pathToFile[targetPath] = targetFile;
             }
 
             // add import data to self
-            files[selfId].imports.push_back(importCall{
-                .location = call.location,
-                .targetId = targetId,
-                .targetPath = targetPath,
+            file->imports.push_back(importCall{
+                .callLocation = call.location,
+                .targetFile = targetFile,
             });
+
+            // add self to dependency
+            targetFile->dependantCount++;
         }
 
-        return selfId;
+        return file;
     };
 
-    recurse(correctPath(entry));
+    return recurse(correctPath(entry));
+}
 
-    return files;
+// wrapper for generateFileTree + flattenFileTreeDependantFirst
+std::vector<luaFile *> generateBundleFileList(filePath entry) {
+    luaFile *fileTree = generateFileTree(entry);
+    return flattenFileTreeDependantFirst(fileTree);
 }

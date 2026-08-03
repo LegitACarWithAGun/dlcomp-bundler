@@ -16,8 +16,8 @@ void handleBundle(projectConfig &projectConfig, bundleConfig &bundleConfig) {
     std::cout << "BUNDLING " << bundleConfig.name << std::endl;
 
     // generate file/dependancy tree
-    std::cout << "= reading from " << pathAbsGeneric(bundleConfig.entryPath) << std::endl;
-    std::vector<luaFile> files = generateFileTree(bundleConfig.entryPath);
+    std::cout << "- reading from " << pathAbsGeneric(bundleConfig.entryPath) << std::endl;
+    std::vector<luaFile *> files = generateBundleFileList(bundleConfig.entryPath);
 
     // format and output file tree
     std::string bundle = bundleFileTree(files);
