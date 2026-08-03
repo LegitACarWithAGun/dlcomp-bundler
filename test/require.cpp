@@ -80,7 +80,7 @@ void testRequireCorrectPath() {
         std::optional<path> result;
         try {
             result = correctPath(input);
-        } catch (const std::exception &err) {
+        } catch (const std::exception& err) {
         }
 
         if (!areOptionalPathsEquivalent(wantOutput, result)) {
@@ -110,7 +110,7 @@ void testRequireMoveFrom() {
         std::optional<path> result;
         try {
             result = moveFrom(from, require);
-        } catch (const std::exception &err) {
+        } catch (const std::exception& err) {
         }
 
         if (!areOptionalPathsEquivalent(wantOutput, result)) {

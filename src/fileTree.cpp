@@ -28,7 +28,7 @@ struct luaFile {
 };
 struct importCall {
     Luau::Location callLocation;
-    luaFile *targetFile;
+    luaFile* targetFile;
 };
 
 bool ignoreRequireTarget(std::string target) {
@@ -46,8 +46,8 @@ class RequireCallVisitor : public Luau::AstVisitor {
   public:
     std::vector<requireCall> results;
 
-    virtual bool visit(class Luau::AstExprCall *node) {
-        Luau::AstExprGlobal *global = node->func->as<Luau::AstExprGlobal>();
+    virtual bool visit(class Luau::AstExprCall* node) {
+        Luau::AstExprGlobal* global = node->func->as<Luau::AstExprGlobal>();
         if (!global) {
             return true;
         }
@@ -147,11 +147,11 @@ filePath moveFrom(filePath from, std::string require) {
 // - index and importId of files are the same
 // - the entry file will always be index 0
 // - any files that depend on another file will always be before the file they depend on
-std::vector<luaFile *> flattenFileTreeDependantFirst(luaFile *entry) {
-    std::unordered_map<luaFile *, int> dependenciesVisited;
+std::vector<luaFile*> flattenFileTreeDependantFirst(luaFile* entry) {
+    std::unordered_map<luaFile*, int> dependenciesVisited;
 
-    std::vector<luaFile *> files;
-    std::vector<luaFile *> nextDepth{entry};
+    std::vector<luaFile*> files;
+    std::vector<luaFile*> nextDepth{entry};
     while (!nextDepth.empty()) {
         auto currentDepth = nextDepth;
         nextDepth.clear();
@@ -185,12 +185,12 @@ std::vector<luaFile *> flattenFileTreeDependantFirst(luaFile *entry) {
 // guarantees about this function:
 // - the .imports field of all files will be in ascending order by location; later calls are later in the list
 //   - (relevant for overriding the require calls later)
-luaFile *generateFileTree(filePath entry) {
-    std::unordered_map<filePath, luaFile *> pathToFile;
+luaFile* generateFileTree(filePath entry) {
+    std::unordered_map<filePath, luaFile*> pathToFile;
 
     // TODO: check for circular dependencies
 
-    std::function<luaFile *(filePath)> recurse = [&](filePath path) -> luaFile * {
+    std::function<luaFile*(filePath)> recurse = [&](filePath path) -> luaFile* {
         auto file = new luaFile{};
         file->path = path;
         file->contents = readFile(path);
@@ -206,7 +206,7 @@ luaFile *generateFileTree(filePath entry) {
             auto targetPath = moveFrom(path, call.target);
 
             // get the file of the import
-            luaFile *targetFile;
+            luaFile* targetFile;
             if (pathToFile.contains(targetPath)) {
                 // already seen this file
                 targetFile = pathToFile.at(targetPath);
@@ -233,7 +233,7 @@ luaFile *generateFileTree(filePath entry) {
 }
 
 // wrapper for generateFileTree + flattenFileTreeDependantFirst
-std::vector<luaFile *> generateBundleFileList(filePath entry) {
-    luaFile *fileTree = generateFileTree(entry);
+std::vector<luaFile*> generateBundleFileList(filePath entry) {
+    luaFile* fileTree = generateFileTree(entry);
     return flattenFileTreeDependantFirst(fileTree);
 }

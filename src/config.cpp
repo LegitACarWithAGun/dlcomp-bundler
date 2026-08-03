@@ -20,7 +20,7 @@ struct projectConfig {
 };
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(projectConfig, bundles);
 
-projectConfig parseConfig(std::istream &stream) {
+projectConfig parseConfig(std::istream& stream) {
     json data = json::parse(stream);
     return data.get<projectConfig>();
 }

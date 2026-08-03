@@ -1,6 +1,6 @@
 #include "require.cpp"
 
-int main(int argc, const char *argv[]) {
+int main(int argc, const char* argv[]) {
     testRequireCorrectPath();
     testRequireMoveFrom();
 
