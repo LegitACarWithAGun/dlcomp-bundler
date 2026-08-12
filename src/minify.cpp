@@ -10,7 +10,7 @@
 #include <vector>
 
 // TODO: generate a source map
-// TODO: AstExprVarargs + probably a bunch of others
+// TODO: probably missing a bunch of nodes, go over the list
 
 using namespace Luau;
 
@@ -35,6 +35,10 @@ static std::unordered_map<QuoteStyle, std::string> quoteStyleLookup = {
     {QuoteStyle::QuotedSingle, "'{}'"},
     {QuoteStyle::QuotedRaw, "[[{}]]"},
     {QuoteStyle::Unquoted, "{}"},
+};
+
+static std::unordered_map<char, std::string> luaEscapeSequences = {
+    {'"', "\\\""}, {'\\', "\\\\"}, {'\n', "\\n"}, {'\b', "\\b"}, {'\f', "\\f"}, {'\r', "\\r"}, {'\t', "\\t"},
 };
 
 std::string getAstLocalName(const AstLocal* local) {
@@ -63,8 +67,23 @@ std::string implode(const std::vector<std::string>& list, const std::string& sep
     return output;
 }
 
-auto AstArrayCharToStringView(const AstArray<char>& value) {
-    return std::string_view{value.data, value.size};
+auto AstArrayCharToString(const AstArray<char>& value) {
+    return std::string{value.data, value.size};
+}
+
+// always escapes everything that can be escaped, regardless of whether or not it was in the original
+// slightly inefficent, not that big of a deal
+// ie single quotes in a double quoted string
+auto EscapeLuaString(const std::string& str) {
+    std::string output;
+    for (char c : str) {
+        if (luaEscapeSequences.contains(c)) {
+            output += luaEscapeSequences[c];
+            continue;
+        }
+        output += c;
+    }
+    return output;
 }
 
 class MinifyVisitor : public AstVisitor {
@@ -200,6 +219,9 @@ class MinifyVisitor : public AstVisitor {
         // args
         output += "(";
         auto argNames = getAstLocalArrayNames(node->args);
+        if (node->vararg) {
+            argNames.push_back("...");
+        }
         output += implode(argNames, ", ");
         output += ")";
 
@@ -411,12 +433,21 @@ class MinifyVisitor : public AstVisitor {
         // TODO: raw quotes are not all the same (ie: [=[]=])
         // probably just have to read the original file at that location (expensive..)
         // OR search the string for substrings that could close raw strings, picking the smallest that doesnt show up
+        // TODO: raw quotes might have newlines embedded, figure out what to do in that case
         auto quoteStyle = node->quoteStyle;
         assert(quoteStyleLookup.contains(quoteStyle));
         auto quoteTemplate = quoteStyleLookup[quoteStyle];
 
-        auto str = AstArrayCharToStringView(node->value);
+        auto str = AstArrayCharToString(node->value);
+        if (quoteStyle != QuoteStyle::QuotedRaw) {
+            str = EscapeLuaString(str);
+        }
         output += std::vformat(quoteTemplate, std::make_format_args(str));
+
+        return false;
+    }
+    virtual bool visit(class AstExprVarargs* node) {
+        output += "...";
         return false;
     }
 
@@ -458,12 +489,16 @@ class MinifyVisitor : public AstVisitor {
         auto expressions = node->expressions.data;
         auto expressionCount = node->expressions.size;
         for (auto i = 0; i < expressionCount; i++) {
-            output += AstArrayCharToStringView(strings[i]);
+            auto str = AstArrayCharToString(strings[i]);
+            output += EscapeLuaString(str);
+
             output += "{";
             expressions[i]->visit(this);
             output += "}";
         }
-        output += AstArrayCharToStringView(strings[expressionCount]);
+        // theres always exactly one more string than expressions, see the comment in Ast.h -> AstExprInterpString
+        auto str = AstArrayCharToString(strings[expressionCount]);
+        output += EscapeLuaString(str);
         output += "`";
         return false;
     }
@@ -471,6 +506,9 @@ class MinifyVisitor : public AstVisitor {
     // ignore
     virtual bool visit(class Luau::AstExprTypeAssertion* node) {
         node->expr->visit(this);
+        return false;
+    }
+    virtual bool visit(class Luau::AstStatTypeAlias* node) {
         return false;
     }
 
