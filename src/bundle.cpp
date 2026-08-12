@@ -67,6 +67,7 @@ std::string fmtModule(const luaFile& file) {
     return output;
 }
 
+// TODO: take in a config
 std::string bundleFileTree(std::vector<luaFile*> files) {
     std::string output = bundle_file_template;
     replace_all_substring(output, "%NAME%", "test string");

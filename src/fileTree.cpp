@@ -191,6 +191,7 @@ luaFile* generateFileTree(filePath entry) {
     // TODO: check for circular dependencies
 
     std::function<luaFile*(filePath)> recurse = [&](filePath path) -> luaFile* {
+        // TODO: free these
         auto file = new luaFile{};
         file->path = path;
         file->contents = readFile(path);
