@@ -55,3 +55,14 @@ std::string overwriteLocation(std::string fileContents, Luau::Location location,
 std::string pathAbsGeneric(std::filesystem::path path) {
     return std::filesystem::absolute(path).generic_string();
 }
+
+void replace_all_substring(std::string& text, std::string find, std::string replace) {
+    while (true) {
+        std::size_t pos = text.find(find);
+        if (pos == std::string::npos) {
+            break;
+        }
+
+        text = text.replace(pos, find.size(), replace);
+    }
+}
