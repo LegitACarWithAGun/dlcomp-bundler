@@ -2,6 +2,7 @@
 #include "config.cpp"
 #include "fileTree.cpp"
 #include "json.hpp"
+#include "minify.cpp"
 #include "utils.cpp"
 #include <filesystem>
 #include <fstream>
@@ -21,6 +22,7 @@ void handleBundle(projectConfig& projectConfig, bundleConfig& bundleConfig) {
 
     // format and output file tree
     std::string bundle = bundleFileTree(files);
+    bundle = minify(bundle);
     std::filesystem::path outputPath = bundleConfig.outputPath;
     writeFile(outputPath, bundle);
     std::cout << "- wrote results to " << pathAbsGeneric(outputPath) << std::endl;
