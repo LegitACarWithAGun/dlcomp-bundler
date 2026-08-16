@@ -33,10 +33,10 @@ void writeFile(std::filesystem::path path, std::string contents) {
 }
 
 std::string fmtPosition(Luau::Position pos) {
-    return std::format("{}x{}", pos.line, pos.column);
+    return std::format("{},{}", pos.line, pos.column);
 }
 std::string fmtLocation(Luau::Location location) {
-    return std::format("{}-{}", fmtPosition(location.begin), fmtPosition(location.end));
+    return std::format("{} - {}", fmtPosition(location.begin), fmtPosition(location.end));
 }
 
 size_t positionToIndex(std::string text, Luau::Position position) {
