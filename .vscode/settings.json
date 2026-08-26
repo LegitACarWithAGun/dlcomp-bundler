@@ -10,4 +10,8 @@
 	"editor.formatOnSave": true,
 	"C_Cpp.formatting": "clangFormat",
 	"luau-lsp.sourcemap.enabled": false,
+	"todo-tree.filtering.excludeGlobs": [
+		"**/extern/*/**",
+	],
+	"todo-tree.tree.scanMode": "workspace"
 }

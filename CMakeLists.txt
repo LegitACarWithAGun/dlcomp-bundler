@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 4.2.1)
 set(CMAKE_CXX_STANDARD 20)
 
+# luau lib
 option(LUAU_BUILD_TESTS OFF)
 option(LUAU_BUILD_CLI OFF)
 option(LUAU_STATIC_CRT ON)

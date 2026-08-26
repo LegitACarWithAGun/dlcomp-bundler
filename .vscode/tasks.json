@@ -3,7 +3,7 @@
 	"tasks": [
 		{
 			"label": "build-bundler",
-			"type": "shell",
+			"type": "process",
 			"presentation": {
 				"echo": true,
 				"reveal": "silent",
