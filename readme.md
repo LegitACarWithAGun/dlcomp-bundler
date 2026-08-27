@@ -1,3 +1,8 @@
+# dlcomp-bundler
+heavily WIP, unsure if Im even keeping this name.  
+probably shouldve just forked an existing bundler.  
+see https://github.com/LegitACarWithAGun/deadlinecomp-mods for a project using this tool
+
 ### TODO:
 - [x] handle comments and strings
 - [x] ignore URLs
