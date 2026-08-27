@@ -11,7 +11,7 @@
 #include <vector>
 using json = nlohmann::json;
 
-std::filesystem::path defaultBundleConfigPath = "./deadline-bundler.json";
+std::filesystem::path defaultBundleConfigPath = "./bundler.json";
 
 void handleBundle(projectConfig& projectConfig, bundleConfig& bundleConfig) {
     std::cout << "BUNDLING " << bundleConfig.name << std::endl;
