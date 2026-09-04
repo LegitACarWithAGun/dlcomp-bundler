@@ -109,11 +109,13 @@ class MinifyVisitor : public AstVisitor {
 
     // FIXME: unclear name
     void appendAstExprArray(const AstArray<AstExpr*>& list) {
-        for (auto itr = list.begin(); itr < list.end(); itr++) {
-            if (itr != list.begin()) {
+        bool isFirst = true;
+        for (auto expression : list) {
+            if (!isFirst) {
                 output += ",";
             }
-            auto expression = *itr;
+            isFirst = false;
+
             debugPrintLocation(expression);
             expression->visit(this);
         }
@@ -134,7 +136,7 @@ class MinifyVisitor : public AstVisitor {
         }
 
         if (isDoBlock) {
-            output += " end; ";
+            output += " end;";
         }
 
         return false;
@@ -222,14 +224,14 @@ class MinifyVisitor : public AstVisitor {
         if (node->vararg) {
             argNames.push_back("...");
         }
-        output += implode(argNames, ", ");
+        output += implode(argNames, ",");
         output += ")";
 
+        // contents
         ignoreNextBlock = true;
         node->body->visit(this);
-        ignoreNextBlock = false;
 
-        // TODO: I would like this space to not be here in certain cases
+        // close block
         output += "end";
         return false;
     }
@@ -238,15 +240,16 @@ class MinifyVisitor : public AstVisitor {
         node->func->visit(this);
         output += "(";
         this->appendAstExprArray(node->args);
-
         output += ")";
         return false;
     }
     // return
     virtual bool visit(class AstStatReturn* node) {
         output += "return ";
-        appendAstExprArray(node->list);
-        output += " ";
+        if (node->list.size > 0) {
+            appendAstExprArray(node->list);
+            output += " ";
+        }
         return false;
     }
     // seemingly just wraps AstExprCall when its at the start of the line?
@@ -266,7 +269,6 @@ class MinifyVisitor : public AstVisitor {
         // then body
         ignoreNextBlock = true;
         node->thenbody->visit(this);
-        ignoreNextBlock = false;
 
         bool hasElseIf = false;
         if (node->elsebody) {
@@ -281,7 +283,7 @@ class MinifyVisitor : public AstVisitor {
         }
 
         if (!hasElseIf) {
-            output += " end;";
+            output += "end;";
         }
         return false;
     }
@@ -305,7 +307,6 @@ class MinifyVisitor : public AstVisitor {
         // body
         ignoreNextBlock = true;
         node->body->visit(this);
-        ignoreNextBlock = false;
 
         output += " end;";
         return false;
@@ -322,7 +323,6 @@ class MinifyVisitor : public AstVisitor {
 
         ignoreNextBlock = true;
         node->body->visit(this);
-        ignoreNextBlock = false;
 
         output += " end;";
         return false;
@@ -335,7 +335,6 @@ class MinifyVisitor : public AstVisitor {
 
         ignoreNextBlock = true;
         node->body->visit(this);
-        ignoreNextBlock = false;
 
         output += " end;";
         return false;
@@ -346,7 +345,6 @@ class MinifyVisitor : public AstVisitor {
 
         ignoreNextBlock = true;
         node->body->visit(this);
-        ignoreNextBlock = false;
 
         output += " until ";
         node->condition->visit(this);
@@ -389,7 +387,7 @@ class MinifyVisitor : public AstVisitor {
     }
 
     // operators
-    // regular operators; a+b, a or b
+    // regular operators; a+b, a%b, a or b
     virtual bool visit(class AstExprBinary* node) {
         BinaryOperator op = node->op;
         assert(binaryOperatorLookup.contains(op));
@@ -399,7 +397,7 @@ class MinifyVisitor : public AstVisitor {
         node->right->visit(this);
         return false;
     }
-    // prefix operators; not, #, and -
+    // prefix operators; -, #, and not
     virtual bool visit(class AstExprUnary* node) {
         UnaryOperator op = node->op;
         assert(unaryOperatorLookup.contains(op));
@@ -409,7 +407,7 @@ class MinifyVisitor : public AstVisitor {
         return false;
     }
 
-    // group; ex: `(yay and yipee)`
+    // group; parentheses, round brackets; for sub-expressions; ex: (5^4)/3
     virtual bool visit(class AstExprGroup* node) {
         output += "(";
         node->expr->visit(this);
@@ -455,8 +453,17 @@ class MinifyVisitor : public AstVisitor {
     // table definiton
     virtual bool visit(class AstExprTable* node) {
         output += "{";
+
+        bool isFirstItem = true;
         typedef AstExprTable::Item::Kind Kind;
         for (auto item : node->items) {
+            // seperate items
+            if (!isFirstItem) {
+                output += ",";
+            }
+            isFirstItem = false;
+
+            // write the key/index of the item
             switch (item.kind) {
             case Kind::List:
                 break;
@@ -475,9 +482,9 @@ class MinifyVisitor : public AstVisitor {
                 assert(false);
                 break;
             }
+
+            // write the value of the item
             item.value->visit(this);
-            // TODO: dont write after last item
-            output += ",";
         }
         output += "}";
         return false;
