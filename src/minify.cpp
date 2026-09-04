@@ -297,6 +297,7 @@ class MinifyVisitor : public AstVisitor {
         node->to->visit(this);
         // step
         if (node->step) {
+            output += ",";
             node->step->visit(this);
         }
         output += " do ";
