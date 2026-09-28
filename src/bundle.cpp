@@ -17,7 +17,13 @@ do
     local function free_module(module: any)
         if module.destroy then
             module.destroy()
-        elseif module.maid then
+            return
+        end
+
+        if module.activator then
+            module.activator:Destroy()
+        end
+        if module.maid then
             module.maid:Destroy()
         end
     end
