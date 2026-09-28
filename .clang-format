@@ -3,3 +3,4 @@ ColumnLimit: 150
 BreakBeforeBraces: Attach
 DerivePointerAlignment: false
 PointerAlignment: Left
+UseTab: AlignWithSpaces

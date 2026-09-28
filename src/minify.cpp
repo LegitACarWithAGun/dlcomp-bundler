@@ -15,567 +15,567 @@ using namespace Luau;
 
 typedef AstExprBinary::Op BinaryOperator;
 static std::unordered_map<BinaryOperator, std::string> binaryOperatorLookup = {
-    {BinaryOperator::Add, "+"},        {BinaryOperator::Sub, "-"},        {BinaryOperator::Mul, "*"},       {BinaryOperator::Div, "/"},
-    {BinaryOperator::FloorDiv, "//"},  {BinaryOperator::Mod, "%"},        {BinaryOperator::Pow, "^"},       {BinaryOperator::Concat, ".."},
-    {BinaryOperator::CompareNe, "~="}, {BinaryOperator::CompareEq, "=="}, {BinaryOperator::CompareLt, "<"}, {BinaryOperator::CompareLe, "<="},
-    {BinaryOperator::CompareGt, ">"},  {BinaryOperator::CompareGe, ">="}, {BinaryOperator::And, " and "},   {BinaryOperator::Or, " or "},
+	{BinaryOperator::Add, "+"},        {BinaryOperator::Sub, "-"},        {BinaryOperator::Mul, "*"},       {BinaryOperator::Div, "/"},
+	{BinaryOperator::FloorDiv, "//"},  {BinaryOperator::Mod, "%"},        {BinaryOperator::Pow, "^"},       {BinaryOperator::Concat, ".."},
+	{BinaryOperator::CompareNe, "~="}, {BinaryOperator::CompareEq, "=="}, {BinaryOperator::CompareLt, "<"}, {BinaryOperator::CompareLe, "<="},
+	{BinaryOperator::CompareGt, ">"},  {BinaryOperator::CompareGe, ">="}, {BinaryOperator::And, " and "},   {BinaryOperator::Or, " or "},
 };
 
 typedef AstExprUnary::Op UnaryOperator;
 static std::unordered_map<UnaryOperator, std::string> unaryOperatorLookup = {
-    {UnaryOperator::Not, "not "},
-    {UnaryOperator::Minus, "-"},
-    {UnaryOperator::Len, "#"},
+	{UnaryOperator::Not, "not "},
+	{UnaryOperator::Minus, "-"},
+	{UnaryOperator::Len, "#"},
 };
 
 typedef AstExprConstantString::QuoteStyle QuoteStyle;
 static std::unordered_map<QuoteStyle, std::string> quoteStyleLookup = {
-    {QuoteStyle::QuotedSimple, "\"{}\""},
-    {QuoteStyle::QuotedSingle, "'{}'"},
-    {QuoteStyle::QuotedRaw, "[[{}]]"},
-    {QuoteStyle::Unquoted, "{}"},
+	{QuoteStyle::QuotedSimple, "\"{}\""},
+	{QuoteStyle::QuotedSingle, "'{}'"},
+	{QuoteStyle::QuotedRaw, "[[{}]]"},
+	{QuoteStyle::Unquoted, "{}"},
 };
 
 static std::unordered_map<char, std::string> luaEscapeSequences = {
-    {'"', "\\\""}, {'\\', "\\\\"}, {'\n', "\\n"}, {'\b', "\\b"}, {'\f', "\\f"}, {'\r', "\\r"}, {'\t', "\\t"},
+	{'"', "\\\""}, {'\\', "\\\\"}, {'\n', "\\n"}, {'\b', "\\b"}, {'\f', "\\f"}, {'\r', "\\r"}, {'\t', "\\t"},
 };
 
 std::string getAstLocalName(const AstLocal* local) {
-    return local->name.value;
+	return local->name.value;
 }
 
 auto getAstLocalArrayNames(const AstArray<AstLocal*>& args) {
-    std::vector<std::string> output;
-    for (auto arg : args) {
-        output.push_back(getAstLocalName(arg));
-    }
-    return output;
+	std::vector<std::string> output;
+	for (auto arg : args) {
+		output.push_back(getAstLocalName(arg));
+	}
+	return output;
 }
 
 std::string implode(const std::vector<std::string>& list, const std::string& seperator) {
-    if (list.size() == 0) {
-        return "";
-    }
-    std::string output;
-    for (auto itr = list.begin(); itr < list.end(); itr++) {
-        if (itr != list.begin()) {
-            output += seperator;
-        }
-        output += *itr;
-    }
-    return output;
+	if (list.size() == 0) {
+		return "";
+	}
+	std::string output;
+	for (auto itr = list.begin(); itr < list.end(); itr++) {
+		if (itr != list.begin()) {
+			output += seperator;
+		}
+		output += *itr;
+	}
+	return output;
 }
 
 auto AstArrayCharToString(const AstArray<char>& value) {
-    return std::string{value.data, value.size};
+	return std::string{value.data, value.size};
 }
 
 // always escapes everything that can be escaped, regardless of whether or not it was in the original
 // slightly inefficent, not that big of a deal
 // ie single quotes in a double quoted string
 auto EscapeLuaString(const std::string& str) {
-    std::string output;
-    for (char c : str) {
-        if (luaEscapeSequences.contains(c)) {
-            output += luaEscapeSequences[c];
-            continue;
-        }
-        output += c;
-    }
-    return output;
+	std::string output;
+	for (char c : str) {
+		if (luaEscapeSequences.contains(c)) {
+			output += luaEscapeSequences[c];
+			continue;
+		}
+		output += c;
+	}
+	return output;
 }
 
 class MinifyVisitor : public AstVisitor {
 
   private:
-    // functions, loops, and DO blocks all keep their body in a AstStatBlock
-    // we only care about recreating the DO block
-    bool isDoBlock = false;
-    bool funcIsAnyonymous = true;
-    const std::string& scriptContents;
+	// functions, loops, and DO blocks all keep their body in a AstStatBlock
+	// we only care about recreating the DO block
+	bool isDoBlock = false;
+	bool funcIsAnyonymous = true;
+	const std::string& scriptContents;
 
   public:
-    // TODO: smarter writing to minimize output size
-    std::string output;
+	// TODO: smarter writing to minimize output size
+	std::string output;
 
-    MinifyVisitor(const std::string& scriptContents) : scriptContents(scriptContents) {};
+	MinifyVisitor(const std::string& scriptContents) : scriptContents(scriptContents) {};
 
-    void debugPrintLocation(class AstNode* node) {
-        if (true)
-            return;
-        std::cout << "debug @ " << fmtLocation(node->location) << " (" << node->classIndex << "): " << typeid(*node).name() << std::endl;
-    }
+	void debugPrintLocation(class AstNode* node) {
+		if (true)
+			return;
+		std::cout << "debug @ " << fmtLocation(node->location) << " (" << node->classIndex << "): " << typeid(*node).name() << std::endl;
+	}
 
-    // FIXME: unclear name
-    void appendAstExprArray(const AstArray<AstExpr*>& list) {
-        bool isFirst = true;
-        for (auto expression : list) {
-            if (!isFirst) {
-                output += ",";
-            }
-            isFirst = false;
+	// FIXME: unclear name
+	void appendAstExprArray(const AstArray<AstExpr*>& list) {
+		bool isFirst = true;
+		for (auto expression : list) {
+			if (!isFirst) {
+				output += ",";
+			}
+			isFirst = false;
 
-            debugPrintLocation(expression);
-            expression->visit(this);
-        }
-    }
+			debugPrintLocation(expression);
+			expression->visit(this);
+		}
+	}
 
-    // stack block
-    virtual bool visit(class AstStatBlock* node) {
-        debugPrintLocation(node);
+	// stack block
+	virtual bool visit(class AstStatBlock* node) {
+		debugPrintLocation(node);
 
-        auto isDo = isDoBlock;
-        isDoBlock = true;
-        if (isDo) {
-            output += "do ";
-        }
+		auto isDo = isDoBlock;
+		isDoBlock = true;
+		if (isDo) {
+			output += "do ";
+		}
 
-        for (auto children : node->body) {
-            children->visit(this);
-        }
+		for (auto children : node->body) {
+			children->visit(this);
+		}
 
-        if (isDo) {
-            output += " end;";
-        }
+		if (isDo) {
+			output += " end;";
+		}
 
-        return false;
-    }
+		return false;
+	}
 
-    // assign
-    // create a local variable
-    virtual bool visit(class AstStatLocal* node) {
-        debugPrintLocation(node);
+	// assign
+	// create a local variable
+	virtual bool visit(class AstStatLocal* node) {
+		debugPrintLocation(node);
 
-        output += "local ";
-        // lvalue
-        auto lvalueNames = getAstLocalArrayNames(node->vars);
-        output += implode(lvalueNames, ",");
+		output += "local ";
+		// lvalue
+		auto lvalueNames = getAstLocalArrayNames(node->vars);
+		output += implode(lvalueNames, ",");
 
-        // rvalue
-        if (node->values.size > 0) {
-            output += "=";
-            appendAstExprArray(node->values);
-        }
+		// rvalue
+		if (node->values.size > 0) {
+			output += "=";
+			appendAstExprArray(node->values);
+		}
 
-        // end line
-        output += ";";
-        return false;
-    }
-    // assign to a previously created variable
-    virtual bool visit(class AstStatAssign* node) {
-        debugPrintLocation(node);
+		// end line
+		output += ";";
+		return false;
+	}
+	// assign to a previously created variable
+	virtual bool visit(class AstStatAssign* node) {
+		debugPrintLocation(node);
 
-        // lvalue
-        appendAstExprArray(node->vars);
-        // eq
-        output += "=";
-        // rvalue
-        appendAstExprArray(node->values);
+		// lvalue
+		appendAstExprArray(node->vars);
+		// eq
+		output += "=";
+		// rvalue
+		appendAstExprArray(node->values);
 
-        // end line
-        output += ";";
-        return false;
-    }
-    // compount assign; a+=b, a%=b
-    virtual bool visit(class AstStatCompoundAssign* node) {
-        BinaryOperator op = node->op;
-        assert(binaryOperatorLookup.contains(op));
+		// end line
+		output += ";";
+		return false;
+	}
+	// compount assign; a+=b, a%=b
+	virtual bool visit(class AstStatCompoundAssign* node) {
+		BinaryOperator op = node->op;
+		assert(binaryOperatorLookup.contains(op));
 
-        node->var->visit(this);
-        output += binaryOperatorLookup[op] + "=";
-        node->value->visit(this);
-        output += ";";
-        return false;
-    }
+		node->var->visit(this);
+		output += binaryOperatorLookup[op] + "=";
+		node->value->visit(this);
+		output += ";";
+		return false;
+	}
 
-    // function header
-    virtual bool visit(class AstStatLocalFunction* node) {
-        output += "local function ";
-        output += getAstLocalName(node->name);
+	// function header
+	virtual bool visit(class AstStatLocalFunction* node) {
+		output += "local function ";
+		output += getAstLocalName(node->name);
 
-        funcIsAnyonymous = false;
-        node->func->visit(this);
+		funcIsAnyonymous = false;
+		node->func->visit(this);
 
-        output += " ";
-        return false;
-    }
-    virtual bool visit(class AstStatFunction* node) {
-        output += "function ";
-        node->name->visit(this);
+		output += " ";
+		return false;
+	}
+	virtual bool visit(class AstStatFunction* node) {
+		output += "function ";
+		node->name->visit(this);
 
-        funcIsAnyonymous = false;
-        node->func->visit(this);
+		funcIsAnyonymous = false;
+		node->func->visit(this);
 
-        output += " ";
-        return false;
-    }
-    // function body
-    virtual bool visit(class AstExprFunction* node) {
-        // workaround for functions without a name
-        if (funcIsAnyonymous) {
-            output += "function";
-        }
-        funcIsAnyonymous = true;
+		output += " ";
+		return false;
+	}
+	// function body
+	virtual bool visit(class AstExprFunction* node) {
+		// workaround for functions without a name
+		if (funcIsAnyonymous) {
+			output += "function";
+		}
+		funcIsAnyonymous = true;
 
-        // args
-        output += "(";
-        auto argNames = getAstLocalArrayNames(node->args);
-        if (node->vararg) {
-            argNames.push_back("...");
-        }
-        output += implode(argNames, ",");
-        output += ")";
+		// args
+		output += "(";
+		auto argNames = getAstLocalArrayNames(node->args);
+		if (node->vararg) {
+			argNames.push_back("...");
+		}
+		output += implode(argNames, ",");
+		output += ")";
 
-        // contents
-        isDoBlock = false;
-        node->body->visit(this);
+		// contents
+		isDoBlock = false;
+		node->body->visit(this);
 
-        // close block
-        output += "end";
-        return false;
-    }
-    // function call `(args)`
-    virtual bool visit(class AstExprCall* node) {
-        node->func->visit(this);
-        output += "(";
-        this->appendAstExprArray(node->args);
-        output += ")";
-        return false;
-    }
-    // return
-    virtual bool visit(class AstStatReturn* node) {
-        output += "return ";
-        if (node->list.size > 0) {
-            appendAstExprArray(node->list);
-            output += " ";
-        }
-        return false;
-    }
-    // seemingly just wraps AstExprCall when its at the start of the line?
-    virtual bool visit(class AstStatExpr* node) {
-        node->expr->visit(this);
-        output += ";";
-        return false;
-    }
+		// close block
+		output += "end";
+		return false;
+	}
+	// function call `(args)`
+	virtual bool visit(class AstExprCall* node) {
+		node->func->visit(this);
+		output += "(";
+		this->appendAstExprArray(node->args);
+		output += ")";
+		return false;
+	}
+	// return
+	virtual bool visit(class AstStatReturn* node) {
+		output += "return ";
+		if (node->list.size > 0) {
+			appendAstExprArray(node->list);
+			output += " ";
+		}
+		return false;
+	}
+	// seemingly just wraps AstExprCall when its at the start of the line?
+	virtual bool visit(class AstStatExpr* node) {
+		node->expr->visit(this);
+		output += ";";
+		return false;
+	}
 
-    // control flow / conditionals
-    // if statment
-    virtual bool visit(class AstStatIf* node) {
-        output += "if ";
-        node->condition->visit(this);
-        output += " then ";
+	// control flow / conditionals
+	// if statment
+	virtual bool visit(class AstStatIf* node) {
+		output += "if ";
+		node->condition->visit(this);
+		output += " then ";
 
-        // then body
-        isDoBlock = false;
-        node->thenbody->visit(this);
+		// then body
+		isDoBlock = false;
+		node->thenbody->visit(this);
 
-        bool hasElseIf = false;
-        if (node->elsebody) {
-            hasElseIf = node->elsebody->is<AstStatIf>();
+		bool hasElseIf = false;
+		if (node->elsebody) {
+			hasElseIf = node->elsebody->is<AstStatIf>();
 
-            output += " else";
-            if (!hasElseIf) {
-                output += " ";
-            }
+			output += " else";
+			if (!hasElseIf) {
+				output += " ";
+			}
 
-            node->elsebody->visit(this);
-        }
+			node->elsebody->visit(this);
+		}
 
-        if (!hasElseIf) {
-            output += "end;";
-        }
-        return false;
-    }
-    // if-else as a expression; ie:
-    // local a = if true then "yay" else "hm"
-    virtual bool visit(class AstExprIfElse* node) {
-        output += "if ";
-        node->condition->visit(this);
-        output += " then ";
+		if (!hasElseIf) {
+			output += "end;";
+		}
+		return false;
+	}
+	// if-else as a expression; ie:
+	// local a = if true then "yay" else "hm"
+	virtual bool visit(class AstExprIfElse* node) {
+		output += "if ";
+		node->condition->visit(this);
+		output += " then ";
 
-        assert(node->hasThen);
-        assert(node->hasElse);
+		assert(node->hasThen);
+		assert(node->hasElse);
 
-        node->trueExpr->visit(this);
-        output += " else ";
-        node->falseExpr->visit(this);
+		node->trueExpr->visit(this);
+		output += " else ";
+		node->falseExpr->visit(this);
 
-        output += ";";
-        return false;
-    }
-    // basic for loop
-    virtual bool visit(class AstStatFor* node) {
-        output += "for ";
-        // iterator
-        output += getAstLocalName(node->var);
-        output += "=";
-        node->from->visit(this);
-        // to
-        output += ",";
-        node->to->visit(this);
-        // step
-        if (node->step) {
-            output += ",";
-            node->step->visit(this);
-        }
-        output += " do ";
+		output += ";";
+		return false;
+	}
+	// basic for loop
+	virtual bool visit(class AstStatFor* node) {
+		output += "for ";
+		// iterator
+		output += getAstLocalName(node->var);
+		output += "=";
+		node->from->visit(this);
+		// to
+		output += ",";
+		node->to->visit(this);
+		// step
+		if (node->step) {
+			output += ",";
+			node->step->visit(this);
+		}
+		output += " do ";
 
-        // body
-        isDoBlock = false;
-        node->body->visit(this);
+		// body
+		isDoBlock = false;
+		node->body->visit(this);
 
-        output += " end;";
-        return false;
-    }
-    // for-in
-    virtual bool visit(class AstStatForIn* node) {
-        output += "for ";
-        auto vars = getAstLocalArrayNames(node->vars);
-        output += implode(vars, ",");
+		output += " end;";
+		return false;
+	}
+	// for-in
+	virtual bool visit(class AstStatForIn* node) {
+		output += "for ";
+		auto vars = getAstLocalArrayNames(node->vars);
+		output += implode(vars, ",");
 
-        output += " in ";
-        appendAstExprArray(node->values);
-        output += " do ";
+		output += " in ";
+		appendAstExprArray(node->values);
+		output += " do ";
 
-        isDoBlock = false;
-        node->body->visit(this);
+		isDoBlock = false;
+		node->body->visit(this);
 
-        output += " end;";
-        return false;
-    }
-    // while
-    virtual bool visit(class AstStatWhile* node) {
-        output += "while ";
-        node->condition->visit(this);
-        output += " do ";
+		output += " end;";
+		return false;
+	}
+	// while
+	virtual bool visit(class AstStatWhile* node) {
+		output += "while ";
+		node->condition->visit(this);
+		output += " do ";
 
-        isDoBlock = false;
-        node->body->visit(this);
+		isDoBlock = false;
+		node->body->visit(this);
 
-        output += " end;";
-        return false;
-    }
-    // repeat
-    virtual bool visit(class AstStatRepeat* node) {
-        output += "repeat ";
+		output += " end;";
+		return false;
+	}
+	// repeat
+	virtual bool visit(class AstStatRepeat* node) {
+		output += "repeat ";
 
-        isDoBlock = false;
-        node->body->visit(this);
+		isDoBlock = false;
+		node->body->visit(this);
 
-        output += " until ";
-        node->condition->visit(this);
+		output += " until ";
+		node->condition->visit(this);
 
-        output += ";";
-        return false;
-    }
-    // continue
-    virtual bool visit(class AstStatContinue* node) {
-        output += "continue;";
-        return false;
-    }
-    // break
-    virtual bool visit(class AstStatBreak* node) {
-        output += "break;";
-        return false;
-    }
+		output += ";";
+		return false;
+	}
+	// continue
+	virtual bool visit(class AstStatContinue* node) {
+		output += "continue;";
+		return false;
+	}
+	// break
+	virtual bool visit(class AstStatBreak* node) {
+		output += "break;";
+		return false;
+	}
 
-    // variable names
-    virtual bool visit(class AstExprGlobal* node) {
-        output += node->name.value;
-        return false;
-    }
-    virtual bool visit(class AstExprLocal* node) {
-        output += getAstLocalName(node->local);
-        return false;
-    }
-    virtual bool visit(class AstExprIndexName* node) {
-        node->expr->visit(this);
-        output += node->op;
-        output += node->index.value;
-        return false;
-    }
-    virtual bool visit(class AstExprIndexExpr* node) {
-        node->expr->visit(this);
-        output += "[";
-        node->index->visit(this);
-        output += "]";
-        return false;
-    }
+	// variable names
+	virtual bool visit(class AstExprGlobal* node) {
+		output += node->name.value;
+		return false;
+	}
+	virtual bool visit(class AstExprLocal* node) {
+		output += getAstLocalName(node->local);
+		return false;
+	}
+	virtual bool visit(class AstExprIndexName* node) {
+		node->expr->visit(this);
+		output += node->op;
+		output += node->index.value;
+		return false;
+	}
+	virtual bool visit(class AstExprIndexExpr* node) {
+		node->expr->visit(this);
+		output += "[";
+		node->index->visit(this);
+		output += "]";
+		return false;
+	}
 
-    // operators
-    // regular operators; a+b, a%b, a or b
-    virtual bool visit(class AstExprBinary* node) {
-        BinaryOperator op = node->op;
-        assert(binaryOperatorLookup.contains(op));
+	// operators
+	// regular operators; a+b, a%b, a or b
+	virtual bool visit(class AstExprBinary* node) {
+		BinaryOperator op = node->op;
+		assert(binaryOperatorLookup.contains(op));
 
-        node->left->visit(this);
-        output += binaryOperatorLookup[op];
-        node->right->visit(this);
-        return false;
-    }
-    // prefix operators; -, #, and not
-    virtual bool visit(class AstExprUnary* node) {
-        UnaryOperator op = node->op;
-        assert(unaryOperatorLookup.contains(op));
+		node->left->visit(this);
+		output += binaryOperatorLookup[op];
+		node->right->visit(this);
+		return false;
+	}
+	// prefix operators; -, #, and not
+	virtual bool visit(class AstExprUnary* node) {
+		UnaryOperator op = node->op;
+		assert(unaryOperatorLookup.contains(op));
 
-        output += unaryOperatorLookup[op];
-        node->expr->visit(this);
-        return false;
-    }
+		output += unaryOperatorLookup[op];
+		node->expr->visit(this);
+		return false;
+	}
 
-    // group; parentheses, round brackets; for sub-expressions; ex: (5^4)/3
-    virtual bool visit(class AstExprGroup* node) {
-        output += "(";
-        node->expr->visit(this);
-        output += ")";
-        return false;
-    }
+	// group; parentheses, round brackets; for sub-expressions; ex: (5^4)/3
+	virtual bool visit(class AstExprGroup* node) {
+		output += "(";
+		node->expr->visit(this);
+		output += ")";
+		return false;
+	}
 
-    // constants
-    virtual bool visit(class AstExprConstantNil* node) {
-        output += "nil";
-        return false;
-    }
-    virtual bool visit(class AstExprConstantBool* node) {
-        output += node->value ? "true" : "false";
-        return false;
-    }
-    virtual bool visit(class AstExprConstantNumber* node) {
-        output += std::format("{}", node->value);
-        return false;
-    }
-    virtual bool visit(class AstExprConstantString* node) {
-        // TODO: raw quotes are not all the same (ie: [=[]=])
-        // probably just have to read the original file at that location (expensive..)
-        // OR search the string for substrings that could close raw strings, picking the smallest that doesnt show up
-        // TODO: raw quotes might have newlines embedded, figure out what to do in that case
-        auto quoteStyle = node->quoteStyle;
-        assert(quoteStyleLookup.contains(quoteStyle));
-        auto quoteTemplate = quoteStyleLookup[quoteStyle];
+	// constants
+	virtual bool visit(class AstExprConstantNil* node) {
+		output += "nil";
+		return false;
+	}
+	virtual bool visit(class AstExprConstantBool* node) {
+		output += node->value ? "true" : "false";
+		return false;
+	}
+	virtual bool visit(class AstExprConstantNumber* node) {
+		output += std::format("{}", node->value);
+		return false;
+	}
+	virtual bool visit(class AstExprConstantString* node) {
+		// TODO: raw quotes are not all the same (ie: [=[]=])
+		// probably just have to read the original file at that location (expensive..)
+		// OR search the string for substrings that could close raw strings, picking the smallest that doesnt show up
+		// TODO: raw quotes might have newlines embedded, figure out what to do in that case
+		auto quoteStyle = node->quoteStyle;
+		assert(quoteStyleLookup.contains(quoteStyle));
+		auto quoteTemplate = quoteStyleLookup[quoteStyle];
 
-        auto str = AstArrayCharToString(node->value);
-        if (quoteStyle != QuoteStyle::QuotedRaw) {
-            str = EscapeLuaString(str);
-        }
-        output += std::vformat(quoteTemplate, std::make_format_args(str));
+		auto str = AstArrayCharToString(node->value);
+		if (quoteStyle != QuoteStyle::QuotedRaw) {
+			str = EscapeLuaString(str);
+		}
+		output += std::vformat(quoteTemplate, std::make_format_args(str));
 
-        return false;
-    }
-    virtual bool visit(class AstExprVarargs* node) {
-        output += "...";
-        return false;
-    }
+		return false;
+	}
+	virtual bool visit(class AstExprVarargs* node) {
+		output += "...";
+		return false;
+	}
 
-    // table definiton
-    virtual bool visit(class AstExprTable* node) {
-        output += "{";
+	// table definiton
+	virtual bool visit(class AstExprTable* node) {
+		output += "{";
 
-        bool isFirstItem = true;
-        typedef AstExprTable::Item::Kind Kind;
-        for (auto item : node->items) {
-            // seperate items
-            if (!isFirstItem) {
-                output += ",";
-            }
-            isFirstItem = false;
+		bool isFirstItem = true;
+		typedef AstExprTable::Item::Kind Kind;
+		for (auto item : node->items) {
+			// seperate items
+			if (!isFirstItem) {
+				output += ",";
+			}
+			isFirstItem = false;
 
-            // write the key/index of the item
-            switch (item.kind) {
-            case Kind::List:
-                break;
-            case Kind::Record:
-                item.key->visit(this);
-                output += "=";
-                break;
-            case Kind::General:
-                output += "[";
-                item.key->visit(this);
-                output += "]";
-                output += "=";
-                break;
-            default:
-                // TODO: proper error msg
-                assert(false);
-                break;
-            }
+			// write the key/index of the item
+			switch (item.kind) {
+			case Kind::List:
+				break;
+			case Kind::Record:
+				item.key->visit(this);
+				output += "=";
+				break;
+			case Kind::General:
+				output += "[";
+				item.key->visit(this);
+				output += "]";
+				output += "=";
+				break;
+			default:
+				// TODO: proper error msg
+				assert(false);
+				break;
+			}
 
-            // write the value of the item
-            item.value->visit(this);
-        }
-        output += "}";
-        return false;
-    }
+			// write the value of the item
+			item.value->visit(this);
+		}
+		output += "}";
+		return false;
+	}
 
-    // interpolated string
-    virtual bool visit(class AstExprInterpString* node) {
-        output += "`";
-        auto strings = node->strings.data;
-        auto expressions = node->expressions.data;
-        auto expressionCount = node->expressions.size;
+	// interpolated string
+	virtual bool visit(class AstExprInterpString* node) {
+		output += "`";
+		auto strings = node->strings.data;
+		auto expressions = node->expressions.data;
+		auto expressionCount = node->expressions.size;
 
-        assert(expressionCount + 1 == node->strings.size);
+		assert(expressionCount + 1 == node->strings.size);
 
-        for (auto i = 0; i < expressionCount; i++) {
-            auto str = AstArrayCharToString(strings[i]);
-            output += EscapeLuaString(str);
+		for (auto i = 0; i < expressionCount; i++) {
+			auto str = AstArrayCharToString(strings[i]);
+			output += EscapeLuaString(str);
 
-            output += "{";
-            expressions[i]->visit(this);
-            output += "}";
-        }
-        // theres always exactly one more string than expressions, see the comment in Ast.h -> AstExprInterpString
-        auto str = AstArrayCharToString(strings[expressionCount]);
-        output += EscapeLuaString(str);
-        output += "`";
-        return false;
-    }
+			output += "{";
+			expressions[i]->visit(this);
+			output += "}";
+		}
+		// theres always exactly one more string than expressions, see the comment in Ast.h -> AstExprInterpString
+		auto str = AstArrayCharToString(strings[expressionCount]);
+		output += EscapeLuaString(str);
+		output += "`";
+		return false;
+	}
 
-    // ignore
-    virtual bool visit(class Luau::AstExprTypeAssertion* node) {
-        node->expr->visit(this);
-        return false;
-    }
-    virtual bool visit(class Luau::AstExprInstantiate* node) {
-        node->expr->visit(this);
-        return false;
-    }
-    virtual bool visit(class Luau::AstStatTypeAlias* node) {
-        return false;
-    }
-    virtual bool visit(class Luau::AstStatTypeFunction* node) {
-        return false;
-    }
-    virtual bool visit(class Luau::AstType* node) {
-        return false;
-    }
+	// ignore
+	virtual bool visit(class Luau::AstExprTypeAssertion* node) {
+		node->expr->visit(this);
+		return false;
+	}
+	virtual bool visit(class Luau::AstExprInstantiate* node) {
+		node->expr->visit(this);
+		return false;
+	}
+	virtual bool visit(class Luau::AstStatTypeAlias* node) {
+		return false;
+	}
+	virtual bool visit(class Luau::AstStatTypeFunction* node) {
+		return false;
+	}
+	virtual bool visit(class Luau::AstType* node) {
+		return false;
+	}
 
-    // TODO: AstStatDeclareGlobal AstStatDeclareFunction AstDeclaredExternTypeProperty AstStatDeclareExternType AstTypePack
+	// TODO: AstStatDeclareGlobal AstStatDeclareFunction AstDeclaredExternTypeProperty AstStatDeclareExternType AstTypePack
 
-    // default (no handler found)
-    // just report to the dev
-    virtual bool visit(class Luau::AstNode* node) {
-        std::cout << "unhandled node @ " << fmtLocation(node->location) << " (" << node->classIndex << "): " << typeid(*node).name() << std::endl;
-        return false;
-    }
+	// default (no handler found)
+	// just report to the dev
+	virtual bool visit(class Luau::AstNode* node) {
+		std::cout << "unhandled node @ " << fmtLocation(node->location) << " (" << node->classIndex << "): " << typeid(*node).name() << std::endl;
+		return false;
+	}
 };
 
 std::string minify(std::string scriptContents) {
-    Luau::Allocator luauAllocator;
-    Luau::AstNameTable nameTable(luauAllocator);
-    Luau::ParseOptions parseOptions;
+	Luau::Allocator luauAllocator;
+	Luau::AstNameTable nameTable(luauAllocator);
+	Luau::ParseOptions parseOptions;
 
-    Luau::ParseResult parseResult = Luau::Parser::parse(scriptContents.data(), scriptContents.size(), nameTable, luauAllocator, parseOptions);
-    if (parseResult.errors.size() > 0) {
-        for (auto err : parseResult.errors) {
-            std::cerr << "parse error:" << std::endl;
-            std::cerr << "	- " << fmtLocation(err.getLocation()) << std::endl;
-            std::cerr << "	- " << err.what() << std::endl;
-            std::cerr << "	- " << err.getMessage() << std::endl;
-        }
-        throw std::runtime_error("parse errors");
-    }
+	Luau::ParseResult parseResult = Luau::Parser::parse(scriptContents.data(), scriptContents.size(), nameTable, luauAllocator, parseOptions);
+	if (parseResult.errors.size() > 0) {
+		for (auto err : parseResult.errors) {
+			std::cerr << "parse error:" << std::endl;
+			std::cerr << "	- " << fmtLocation(err.getLocation()) << std::endl;
+			std::cerr << "	- " << err.what() << std::endl;
+			std::cerr << "	- " << err.getMessage() << std::endl;
+		}
+		throw std::runtime_error("parse errors");
+	}
 
-    MinifyVisitor visitor{scriptContents};
-    parseResult.root->visit(&visitor);
-    return visitor.output;
+	MinifyVisitor visitor{scriptContents};
+	parseResult.root->visit(&visitor);
+	return visitor.output;
 }

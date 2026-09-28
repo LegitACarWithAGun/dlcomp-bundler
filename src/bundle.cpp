@@ -14,29 +14,29 @@ shared.dlcomp_bundler = shared.dlcomp_bundler or {}
 
 -- deal with the previous version of the bundle
 do
-    local function free_module(module: any)
-        if module.destroy then
-            module.destroy()
-            return
-        end
+	local function free_module(module: any)
+		if module.destroy then
+			module.destroy()
+			return
+		end
 
-        if module.activator then
-            module.activator:Destroy()
-        end
-        if module.maid then
-            module.maid:Destroy()
-        end
-    end
+		if module.activator then
+			module.activator:Destroy()
+		end
+		if module.maid then
+			module.maid:Destroy()
+		end
+	end
 
-    local last_instance = shared.dlcomp_bundler[__BUNDLE_NAME]
-    if last_instance then
-        for _, module in last_instance do
-            local success, err = pcall(free_module, module)
-            if not success then
-                warn("freeing previously loaded version of a module:", err)
-            end
-        end
-    end
+	local last_instance = shared.dlcomp_bundler[__BUNDLE_NAME]
+	if last_instance then
+		for _, module in last_instance do
+			local success, err = pcall(free_module, module)
+			if not success then
+				warn("freeing previously loaded version of a module:", err)
+			end
+		end
+	end
 end
 
 task.wait(1)
@@ -45,45 +45,45 @@ shared.dlcomp_bundler[__BUNDLE_NAME] = __BUNDLE_MODULES
 )===";
 
 std::string fmtModule(const luaFile& file) {
-    std::string output;
+	std::string output;
 
-    // header / info
-    output += std::format("--PATH: ./{}\n", std::filesystem::relative(file.path, "./").generic_string());
+	// header / info
+	output += std::format("--PATH: ./{}\n", std::filesystem::relative(file.path, "./").generic_string());
 
-    // loader
-    output += std::format("__BUNDLE_MODULES[{}] = (function()\n", file.importId);
+	// loader
+	output += std::format("__BUNDLE_MODULES[{}] = (function()\n", file.importId);
 
-    // body
-    std::string moduleBody = file.contents;
-    // replace require calls
-    auto imports = file.imports;
-    for (auto importIt = imports.rbegin(); importIt != imports.rend(); importIt++) {
-        auto import = *importIt;
-        moduleBody = overwriteLocation(moduleBody, import.callLocation, std::format("__BUNDLE_MODULES[{}]", import.targetFile->importId));
-    }
-    // tab right
-    moduleBody = "\t" + moduleBody;
-    moduleBody = std::regex_replace(moduleBody, std::regex("\n"), "\n\t");
-    // write to results
-    output += moduleBody + "\n";
+	// body
+	std::string moduleBody = file.contents;
+	// replace require calls
+	auto imports = file.imports;
+	for (auto importIt = imports.rbegin(); importIt != imports.rend(); importIt++) {
+		auto import = *importIt;
+		moduleBody = overwriteLocation(moduleBody, import.callLocation, std::format("__BUNDLE_MODULES[{}]", import.targetFile->importId));
+	}
+	// tab right
+	moduleBody = "\t" + moduleBody;
+	moduleBody = std::regex_replace(moduleBody, std::regex("\n"), "\n\t");
+	// write to results
+	output += moduleBody + "\n";
 
-    // close
-    output += "end)()";
+	// close
+	output += "end)()";
 
-    return output;
+	return output;
 }
 
 // TODO: take in a config
 std::string bundleFileTree(std::vector<luaFile*> files) {
-    std::string output = bundle_file_template;
-    replace_all_substring(output, "%NAME%", "test string");
+	std::string output = bundle_file_template;
+	replace_all_substring(output, "%NAME%", "test string");
 
-    // flattenFileTreeDependantFirst guarantees that any files that depend on another file will always be before the file they depend on
-    // so add them to the file highest->lowest
-    for (auto itr = files.rbegin(); itr != files.rend(); itr++) {
-        auto file = *itr;
-        output += std::format("\n\n{}", fmtModule(*file));
-    }
+	// flattenFileTreeDependantFirst guarantees that any files that depend on another file will always be before the file they depend on
+	// so add them to the file highest->lowest
+	for (auto itr = files.rbegin(); itr != files.rend(); itr++) {
+		auto file = *itr;
+		output += std::format("\n\n{}", fmtModule(*file));
+	}
 
-    return output;
+	return output;
 }
