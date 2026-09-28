@@ -10,7 +10,6 @@
 #include <vector>
 
 // TODO: generate a source map
-// TODO: probably missing a bunch of nodes, go over the list
 
 using namespace Luau;
 
@@ -91,7 +90,7 @@ class MinifyVisitor : public AstVisitor {
   private:
     // functions, loops, and DO blocks all keep their body in a AstStatBlock
     // we only care about recreating the DO block
-    bool ignoreNextBlock = true;
+    bool isDoBlock = false;
     bool funcIsAnyonymous = true;
     const std::string& scriptContents;
 
@@ -125,9 +124,9 @@ class MinifyVisitor : public AstVisitor {
     virtual bool visit(class AstStatBlock* node) {
         debugPrintLocation(node);
 
-        auto isDoBlock = !ignoreNextBlock;
-        ignoreNextBlock = false;
-        if (isDoBlock) {
+        auto isDo = isDoBlock;
+        isDoBlock = true;
+        if (isDo) {
             output += "do ";
         }
 
@@ -135,7 +134,7 @@ class MinifyVisitor : public AstVisitor {
             children->visit(this);
         }
 
-        if (isDoBlock) {
+        if (isDo) {
             output += " end;";
         }
 
@@ -228,7 +227,7 @@ class MinifyVisitor : public AstVisitor {
         output += ")";
 
         // contents
-        ignoreNextBlock = true;
+        isDoBlock = false;
         node->body->visit(this);
 
         // close block
@@ -267,7 +266,7 @@ class MinifyVisitor : public AstVisitor {
         output += " then ";
 
         // then body
-        ignoreNextBlock = true;
+        isDoBlock = false;
         node->thenbody->visit(this);
 
         bool hasElseIf = false;
@@ -285,6 +284,23 @@ class MinifyVisitor : public AstVisitor {
         if (!hasElseIf) {
             output += "end;";
         }
+        return false;
+    }
+    // if-else as a expression; ie:
+    // local a = if true then "yay" else "hm"
+    virtual bool visit(class AstExprIfElse* node) {
+        output += "if ";
+        node->condition->visit(this);
+        output += " then ";
+
+        assert(node->hasThen);
+        assert(node->hasElse);
+
+        node->trueExpr->visit(this);
+        output += " else ";
+        node->falseExpr->visit(this);
+
+        output += ";";
         return false;
     }
     // basic for loop
@@ -305,7 +321,7 @@ class MinifyVisitor : public AstVisitor {
         output += " do ";
 
         // body
-        ignoreNextBlock = true;
+        isDoBlock = false;
         node->body->visit(this);
 
         output += " end;";
@@ -321,7 +337,7 @@ class MinifyVisitor : public AstVisitor {
         appendAstExprArray(node->values);
         output += " do ";
 
-        ignoreNextBlock = true;
+        isDoBlock = false;
         node->body->visit(this);
 
         output += " end;";
@@ -333,7 +349,7 @@ class MinifyVisitor : public AstVisitor {
         node->condition->visit(this);
         output += " do ";
 
-        ignoreNextBlock = true;
+        isDoBlock = false;
         node->body->visit(this);
 
         output += " end;";
@@ -343,7 +359,7 @@ class MinifyVisitor : public AstVisitor {
     virtual bool visit(class AstStatRepeat* node) {
         output += "repeat ";
 
-        ignoreNextBlock = true;
+        isDoBlock = false;
         node->body->visit(this);
 
         output += " until ";
@@ -496,6 +512,9 @@ class MinifyVisitor : public AstVisitor {
         auto strings = node->strings.data;
         auto expressions = node->expressions.data;
         auto expressionCount = node->expressions.size;
+
+        assert(expressionCount + 1 == node->strings.size);
+
         for (auto i = 0; i < expressionCount; i++) {
             auto str = AstArrayCharToString(strings[i]);
             output += EscapeLuaString(str);
@@ -516,9 +535,21 @@ class MinifyVisitor : public AstVisitor {
         node->expr->visit(this);
         return false;
     }
+    virtual bool visit(class Luau::AstExprInstantiate* node) {
+        node->expr->visit(this);
+        return false;
+    }
     virtual bool visit(class Luau::AstStatTypeAlias* node) {
         return false;
     }
+    virtual bool visit(class Luau::AstStatTypeFunction* node) {
+        return false;
+    }
+    virtual bool visit(class Luau::AstType* node) {
+        return false;
+    }
+
+    // TODO: AstStatDeclareGlobal AstStatDeclareFunction AstDeclaredExternTypeProperty AstStatDeclareExternType AstTypePack
 
     // default (no handler found)
     // just report to the dev
