@@ -94,13 +94,10 @@ class MinifyVisitor : public AstVisitor {
 	// we only care about recreating the DO block
 	bool isDoBlock = false;
 	bool funcIsAnyonymous = true;
-	const std::string& scriptContents;
 
   public:
 	// TODO: smarter writing to minimize output size
 	std::string output;
-
-	MinifyVisitor(const std::string& scriptContents) : scriptContents(scriptContents) {};
 
 	void debugPrintLocation(class AstNode* node) {
 		if (true)
@@ -577,7 +574,7 @@ std::string minify(std::string scriptContents) {
 		throw std::runtime_error("parse errors");
 	}
 
-	MinifyVisitor visitor{scriptContents};
+	MinifyVisitor visitor{};
 	parseResult.root->visit(&visitor);
 	return visitor.output;
 }
