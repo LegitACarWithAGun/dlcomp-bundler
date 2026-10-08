@@ -1,3 +1,5 @@
+#pragma once
+
 #include "json.hpp"
 #include "utils.cpp"
 #include <filesystem>

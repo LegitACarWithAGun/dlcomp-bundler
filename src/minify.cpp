@@ -1,3 +1,5 @@
+#pragma once
+
 #include "Luau/Ast.h"
 #include "Luau/Parser.h"
 #include "iostream"
