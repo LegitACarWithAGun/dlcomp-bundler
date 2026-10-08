@@ -195,7 +195,7 @@ class MinifyVisitor : public AstVisitor {
 		funcIsAnyonymous = false;
 		node->func->visit(this);
 
-		output += " ";
+		output += ";";
 		return false;
 	}
 	virtual bool visit(class AstStatFunction* node) {
@@ -205,7 +205,7 @@ class MinifyVisitor : public AstVisitor {
 		funcIsAnyonymous = false;
 		node->func->visit(this);
 
-		output += " ";
+		output += ";";
 		return false;
 	}
 	// function body
