@@ -11,6 +11,43 @@ const char* bundle_file_template = {
 #include "bundle-template.luau"
 };
 
+// scopes every declared global function to the root (turns them into a local)
+// to ensure they cant override any functions declared in other modules/files
+class ScopeGlobalFunctionsVisitor : public Luau::AstVisitor {
+  public:
+	Luau::AstStatBlock* treeRoot;
+	Luau::Allocator& allocator;
+
+	ScopeGlobalFunctionsVisitor(Luau::AstStatBlock* treeRoot, Luau::Allocator& allocator) : treeRoot(treeRoot), allocator(allocator) {};
+
+	virtual bool visit(class Luau::AstStatFunction* node) {
+		auto nameInfo = node->name;
+
+		if (nameInfo->is<Luau::AstExprLocal>()) {
+			return false;
+		}
+		if (nameInfo->is<Luau::AstExprIndexName>()) {
+			return false;
+		}
+
+		auto nameAsGlobal = nameInfo->as<Luau::AstExprGlobal>();
+		if (!nameAsGlobal) {
+			std::cout << "unkown node used for function name @ " << fmtLocation(nameAsGlobal->location) << " (" << nameAsGlobal->classIndex
+			          << "): " << typeid(*nameAsGlobal).name() << std::endl;
+			return false;
+		}
+
+		auto createdLocalName = allocator.alloc<Luau::AstLocal>(nameAsGlobal->name, nameAsGlobal->location, nullptr, 0, 0, nullptr);
+		auto createdNode = allocator.alloc<Luau::AstStatLocal>(nameAsGlobal->location, CopyToAstArray(allocator, &createdLocalName, 1),
+		                                                       Luau::AstArray<Luau::AstExpr*>{}, std::nullopt);
+
+		// TODO: only add 1 node per module instead of 1 node per variable
+		// as in: local a, b, c
+		treeRoot->body = AstArrayPushFront(allocator, treeRoot->body, static_cast<Luau::AstStat*>(createdNode));
+
+		return false;
+	}
+};
 
 std::string fmtModule(const luaFile& file) {
 	auto contents = file.contents;
@@ -33,6 +70,9 @@ std::string fmtModule(const luaFile& file) {
 		write_luau_parse_errors(std::cerr, file.path, parseResult.errors);
 		throw std::runtime_error("parse errors");
 	}
+
+	ScopeGlobalFunctionsVisitor functionVisitor{parseResult.root, luauAllocator};
+	parseResult.root->visit(&functionVisitor);
 
 	MinifyVisitor minifyVisitor{};
 	parseResult.root->visit(&minifyVisitor);
