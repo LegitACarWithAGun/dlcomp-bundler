@@ -77,14 +77,14 @@ class RequireCallVisitor : public Luau::AstVisitor {
 		return false;
 	};
 };
-std::vector<requireCall> getRequireCalls(std::string scriptContents) {
+std::vector<requireCall> getRequireCalls(filePath path, std::string scriptContents) {
 	Luau::Allocator luauAllocator;
 	Luau::AstNameTable nameTable(luauAllocator);
 	Luau::ParseOptions parseOptions;
 
 	Luau::ParseResult parseResult = Luau::Parser::parse(scriptContents.data(), scriptContents.size(), nameTable, luauAllocator, parseOptions);
 	if (parseResult.errors.size() > 0) {
-		// TODO
+		write_luau_parse_errors(std::cerr, path, parseResult.errors);
 		throw std::runtime_error("parse errors");
 	}
 
@@ -196,7 +196,7 @@ luaFile* generateFileTree(filePath entry) {
 		file->path = path;
 		file->contents = readFile(path);
 
-		auto requireCalls = getRequireCalls(file->contents);
+		auto requireCalls = getRequireCalls(file->path, file->contents);
 		for (auto call : requireCalls) {
 			// ignore require calls we dont care about, ie runtime network calls
 			if (ignoreRequireTarget(call.target)) {

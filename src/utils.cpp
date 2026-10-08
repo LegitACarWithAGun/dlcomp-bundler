@@ -33,7 +33,9 @@ void writeFile(std::filesystem::path path, std::string contents) {
 }
 
 std::string fmtPosition(Luau::Position pos) {
-	return std::format("{},{}", pos.line, pos.column);
+	// luau treats the first character as 0,0; while vscode uses 1,1
+	// seperated by colon to allow jumping to the position when appended to path
+	return std::format("{}:{}", pos.line + 1, pos.column + 1);
 }
 std::string fmtLocation(Luau::Location location) {
 	return std::format("{} - {}", fmtPosition(location.begin), fmtPosition(location.end));
@@ -64,5 +66,19 @@ void replace_all_substring(std::string& text, std::string find, std::string repl
 		}
 
 		text = text.replace(pos, find.size(), replace);
+	}
+}
+
+void write_luau_parse_errors(std::ostream& stream, std::optional<std::filesystem::path> path, std::vector<Luau::ParseError> errors) {
+	stream << "PARSE ERRORS:" << std::endl;
+	for (auto err : errors) {
+
+		auto location = err.getLocation();
+		if (path.has_value()) {
+			stream << std::format("\t@ {}:{}", pathAbsGeneric(path.value()), fmtPosition(location.begin)) << std::endl;
+		}
+
+		stream << "\t- area: " << fmtLocation(location) << std::endl;
+		stream << "\t- what: " << err.getMessage() << std::endl;
 	}
 }

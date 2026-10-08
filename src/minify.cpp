@@ -558,19 +558,14 @@ class MinifyVisitor : public AstVisitor {
 	}
 };
 
-std::string minify(std::string scriptContents) {
+std::string minify(std::string scriptContents, std::optional<filePath> path) {
 	Luau::Allocator luauAllocator;
 	Luau::AstNameTable nameTable(luauAllocator);
 	Luau::ParseOptions parseOptions;
 
 	Luau::ParseResult parseResult = Luau::Parser::parse(scriptContents.data(), scriptContents.size(), nameTable, luauAllocator, parseOptions);
 	if (parseResult.errors.size() > 0) {
-		for (auto err : parseResult.errors) {
-			std::cerr << "parse error:" << std::endl;
-			std::cerr << "	- " << fmtLocation(err.getLocation()) << std::endl;
-			std::cerr << "	- " << err.what() << std::endl;
-			std::cerr << "	- " << err.getMessage() << std::endl;
-		}
+		write_luau_parse_errors(std::cerr, path, parseResult.errors);
 		throw std::runtime_error("parse errors");
 	}
 
