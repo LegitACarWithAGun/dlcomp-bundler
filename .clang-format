@@ -4,3 +4,4 @@ BreakBeforeBraces: Attach
 DerivePointerAlignment: false
 PointerAlignment: Left
 UseTab: AlignWithSpaces
+BreakTemplateDeclarations: Yes

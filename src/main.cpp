@@ -20,9 +20,10 @@ void handleBundle(projectConfig& projectConfig, bundleConfig& bundleConfig) {
 	std::cout << "- reading from " << pathAbsGeneric(bundleConfig.entryPath) << std::endl;
 	std::vector<luaFile*> files = generateBundleFileList(bundleConfig.entryPath);
 
-	// format and output file tree
+	// bundle all the files together
 	std::string bundle = bundleFileTree(files);
-	bundle = minify(bundle);
+
+	// write to file
 	std::filesystem::path outputPath = bundleConfig.outputPath;
 	writeFile(outputPath, bundle);
 	std::cout << "- wrote results to " << pathAbsGeneric(outputPath) << std::endl;

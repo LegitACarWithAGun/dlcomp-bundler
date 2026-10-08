@@ -5,6 +5,7 @@
 	"triggerTaskOnSave.tasks": {
 		"build-bundler": [
 			"*.cpp",
+			"src/**/*.luau",
 		]
 	},
 	"editor.formatOnSave": true,
@@ -13,5 +14,8 @@
 	"todo-tree.filtering.excludeGlobs": [
 		"**/extern/*/**",
 	],
-	"todo-tree.tree.scanMode": "workspace"
+	"todo-tree.tree.scanMode": "workspace",
+	"[luau][lua]": {
+		"editor.formatOnSave": false,
+	}
 }

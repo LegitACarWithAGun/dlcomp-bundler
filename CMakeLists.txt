@@ -27,3 +27,11 @@ project(dlcomp-bundler)
 add_executable(dlcomp-bundler src/main.cpp)
 target_link_libraries(dlcomp-bundler PUBLIC Luau.Ast)
 target_include_directories(dlcomp-bundler PUBLIC extern/single/)
+
+target_include_directories(dlcomp-bundler PUBLIC generated/)
+add_custom_command(
+	TARGET dlcomp-bundler PRE_BUILD
+	COMMAND ${CMAKE_COMMAND}
+		-DPATH=${CMAKE_SOURCE_DIR}
+		-P ${CMAKE_SOURCE_DIR}/on-build.cmake
+)
