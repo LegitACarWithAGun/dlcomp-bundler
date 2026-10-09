@@ -493,9 +493,8 @@ class MinifyVisitor : public AstVisitor {
 				output += "=";
 				break;
 			default:
-				// TODO: proper error msg
-				assert(false);
-				break;
+				std::cerr << "unhandled table record kind @ " << fmtLocation(node->location) << std::endl;
+				throw new std::logic_error("unknown kind of AstExprTable record");
 			}
 
 			// write the value of the item
