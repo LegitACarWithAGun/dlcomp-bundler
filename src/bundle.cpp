@@ -1,11 +1,13 @@
 #pragma once
 
 #include "Luau/Ast.h"
+#include "config.cpp"
 #include "fileTree.cpp"
 #include "minify.cpp"
 #include "utils.cpp"
 #include <format>
 #include <regex>
+namespace config = dlcomp::bundler::config;
 
 const char* bundle_file_template = {
 #include "bundle-template.luau"
@@ -80,14 +82,13 @@ std::string fmtModule(const luaFile& file) {
 	return std::format("function() {} end", minifyVisitor.output);
 }
 
-// TODO: take in a config
-std::string bundleFileTree(std::vector<luaFile*> files) {
+std::string bundleFileTree(const std::vector<luaFile*>& files, const config::BundleOptions& bundleOptions) {
 	std::string output = bundle_file_template;
-	replace_all_substring(output, "[[NAME]]", "test string");
+	replace_all_substring(output, "[[NAME]]", bundleOptions.name);
 
 	std::vector<std::string> module_constructors;
 	for (auto file : files) {
-		std::cout << "\t- formatting file " << file->path.generic_string() << std::endl;
+		std::cout << "\t- formatting file " << pathAbsGeneric(file->path) << std::endl;
 		module_constructors.push_back("\t" + fmtModule(*file));
 	}
 	replace_all_substring(output, "[[CONSTRUCTORS]]", implode(module_constructors, ",\n"));

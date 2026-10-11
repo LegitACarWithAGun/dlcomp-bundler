@@ -1,7 +1,6 @@
 #include "bundle.cpp"
 #include "config.cpp"
 #include "fileTree.cpp"
-#include "json.hpp"
 #include "minify.cpp"
 #include "utils.cpp"
 #include <filesystem>
@@ -9,24 +8,25 @@
 #include <iostream>
 #include <istream>
 #include <vector>
-using json = nlohmann::json;
+namespace config = dlcomp::bundler::config;
 
 std::filesystem::path defaultBundleConfigPath = "./bundler.json";
 
-void handleBundle(projectConfig& projectConfig, bundleConfig& bundleConfig) {
-	std::cout << "BUNDLING " << bundleConfig.name << std::endl;
+void handleBundle(const config::BundleOptions& bundleOptions) {
+	std::cout << "BUNDLING " << bundleOptions.name << std::endl;
 
 	// generate file/dependancy tree
-	std::cout << "- reading from " << pathAbsGeneric(bundleConfig.entryPath) << std::endl;
-	std::vector<luaFile*> files = generateBundleFileList(bundleConfig.entryPath);
+	auto entryPath = config::GetEntryPath(bundleOptions);
+	std::cout << "- entering from " << pathAbsGeneric(entryPath) << std::endl;
+	std::vector<luaFile*> files = generateBundleFileList(entryPath);
 
 	// bundle all the files together
-	std::string bundle = bundleFileTree(files);
+	std::string bundle = bundleFileTree(files, bundleOptions);
 
 	// write to file
-	std::filesystem::path outputPath = bundleConfig.outputPath;
+	auto outputPath = config::GetOutputPath(bundleOptions);
+	std::cout << "- writing bundle to " << pathAbsGeneric(outputPath) << std::endl;
 	writeFile(outputPath, bundle);
-	std::cout << "- wrote results to " << pathAbsGeneric(outputPath) << std::endl;
 	std::cout << std::endl;
 }
 
@@ -38,17 +38,16 @@ int main() {
 	if (!configFile) {
 		std::cerr << "!! no config file found at " << pathAbsGeneric(configPath) << std::endl;
 		std::cerr << "example config file contents:" << std::endl;
-
-		json defaultConfigJSON;
-		to_json(defaultConfigJSON, generateDefaultConfig());
-		std::cerr << defaultConfigJSON.dump(1, '\t') << std::endl;
+		std::cerr << config::GenerateDefaultConfigJson().dump(1, '\t') << std::endl;
 		return 1;
 	}
-	projectConfig projectConfig = parseConfig(configFile);
+	config::ProjectConfig projectConfig = config::ParseConfig(configFile);
 	std::cout << std::endl;
 
-	for (auto bundleConfig : projectConfig.bundles) {
-		handleBundle(projectConfig, bundleConfig);
+	auto bundles = projectConfig.bundles;
+	for (int i = 0; i < bundles.size(); i++) {
+		auto bundleOptions = config::CalcBundleOptions(projectConfig, i);
+		handleBundle(bundleOptions);
 	}
 
 	std::cout << "success" << std::endl;

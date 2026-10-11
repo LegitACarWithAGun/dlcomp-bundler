@@ -1,0 +1,57 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"type": "object",
+	"required": [
+		"bundles"
+	],
+	"properties": {
+		"defaults": {
+			"$ref": "#/$defs/genericBundleOptions"
+		},
+		"bundles": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"required": [
+					"name",
+					"entry",
+					"output"
+				],
+				"properties": {
+					"name": {
+						"type": "string",
+						"description": "Used to identify the bundle when loaded."
+					},
+					"entry": {
+						"type": "string",
+						"description": "The path to the root/main file of the bundle.\n\nCombined with entryPrefix."
+					},
+					"output": {
+						"type": "string",
+						"description": "The path to write the resulting bundle to.\n\nCombined with outputPrefix."
+					}
+				},
+				"allOf": [
+					{
+						"$ref": "#/$defs/genericBundleOptions"
+					}
+				]
+			}
+		}
+	},
+	"$defs": {
+		"genericBundleOptions": {
+			"type": "object",
+			"properties": {
+				"entryPrefix": {
+					"type": "string",
+					"description": "Prefix to the per-bundle `entry` field."
+				},
+				"outputPrefix": {
+					"type": "string",
+					"description": "Prefix to the per-bundle `output` field.\n\nI reccomend setting this to the folder you want to store the bundles in."
+				}
+			}
+		}
+	}
+}
