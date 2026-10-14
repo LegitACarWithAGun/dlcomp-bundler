@@ -82,38 +82,3 @@ void write_luau_parse_errors(std::ostream& stream, std::optional<std::filesystem
 		stream << "\t- what: " << err.getMessage() << std::endl;
 	}
 }
-
-template <typename T>
-Luau::AstArray<T> InitAstArrayOfSize(Luau::Allocator& allocator, size_t size) {
-	Luau::AstArray<T> result;
-	result.size = size;
-	result.data = static_cast<T*>(allocator.allocate(sizeof(T) * size));
-	return result;
-}
-
-// this is directly copying AstArray<T> Parser::copy
-// please reffer to that
-template <typename T>
-Luau::AstArray<T> CopyToAstArray(Luau::Allocator& allocator, T* data, size_t size) {
-	Luau::AstArray<T> result = InitAstArrayOfSize<T>(allocator, size);
-
-	// This is equivalent to std::uninitialized_copy, but without the exception guarantee
-	// since our types don't have destructors
-	for (size_t i = 0; i < size; ++i)
-		new (result.data + i) T(data[i]);
-
-	return result;
-}
-
-template <typename T>
-Luau::AstArray<T> AstArrayPushFront(Luau::Allocator& allocator, Luau::AstArray<T> arr, T add) {
-	size_t size = 1 + arr.size;
-	Luau::AstArray<T> result = InitAstArrayOfSize<T>(allocator, size);
-
-	new (result.data) T(add);
-	for (auto i = 0; i < arr.size; i++) {
-		new (result.data + 1 + i) T(arr.data[i]);
-	}
-
-	return result;
-}
