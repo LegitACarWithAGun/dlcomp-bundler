@@ -25,7 +25,7 @@ function __BUNDLE.free_module(module: any)
 	end
 end
 function __BUNDLE._free_module_list(list: { any }, bundle_name: string?)
-	for i = #list, 1, -1 do
+	for i = 1, #list do
 		local module = list[i]
 		if module == nil then
 			continue
